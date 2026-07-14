@@ -1,0 +1,47 @@
+name: US Premium Bandai Monitor
+
+on:
+  schedule:
+    - cron: '30 0 * * *' # 每天當地時間早上 08:30 自動執行
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor_job:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    - name: 安裝必要套件與雲端瀏覽器
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4 playwright
+        playwright install chromium
+        playwright install-deps chromium
+    - name: 執行美國萬代監控
+      run: python bandai_tracker.py us # 💡 傳入參數 us
+    - name: 偵測並發送 Email 通知
+      if: hashFiles('mail_alert.txt') != ''
+      uses: dawidd6/action-send-mail@v4
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: 🚨 【US Premium Bandai】新商品上架通知！
+        to: ${{ secrets.MAIL_TO }}
+        from: GitHub Action Bot
+        body: file://mail_alert.txt
+    - name: 自動推回 JSON 資料庫
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action Bot"
+        if [ -n "$(git status --porcelain pb_us_history.json)" ]; then
+          git add pb_us_history.json
+          git commit -m "🤖 自動更新：US Premium Bandai 商品紀錄"
+          git push
+        fi
