@@ -21,13 +21,15 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: 3. 安裝必要套件
+    - name: 3. 安裝必要套件與雲端瀏覽器
       run: |
         python -m pip install --upgrade pip
-        pip install requests beautifulsoup4
+        pip install requests beautifulsoup4 playwright
+        # 💡 安裝 Playwright 所需的 Chromium 瀏覽器核心與系統依賴檔案
+        playwright install chromium
+        playwright install-deps chromium
 
     - name: 4. 執行萬代監控腳本
-      # 💡 這裡已經幫你修改為新的腳本檔名
       run: python bandai_tracker.py 
 
     - name: 5. 偵測並發送 Email 通知
