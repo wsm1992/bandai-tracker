@@ -43,5 +43,7 @@ jobs:
         if [ -n "$(git status --porcelain pb_us_history.json)" ]; then
           git add pb_us_history.json
           git commit -m "🤖 自動更新：US Premium Bandai 商品紀錄"
-          git push
+          # 💡 關鍵：推檔前先拉取並基底重置，防止與你的手動提交衝突
+          git pull --rebase origin main
+          git push origin HEAD:main
         fi
