@@ -3,18 +3,17 @@ from bs4 import BeautifulSoup
 import os
 import json
 
-# 你指定的 Premium Bandai 搜尋網址
+# Premium Bandai 香港站指定的搜尋網址
 URL = "https://p-bandai.com/hk/search?_lc=zh-HK&offset=0&limit=20&sortType=Relevance&_f_productStatuses=Waiting,On&_f_categories=04-011"
 
-# 模擬瀏覽器標頭，避免被萬代網站封鎖
+# 模擬瀏覽器標頭，避免被萬代網站阻擋
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "zh-HK,zh;q=0.9"
 }
 
+# 用來存放歷史商品 ID 的 JSON 檔案名稱
 HISTORY_FILE = "pb_product_history.json"
-# 這裡可以換成你的 Discord Webhook 網址，或者 Telegram Bot Token
-NOTIFY_WEBHOOK_URL = os.environ.get("NOTIFY_WEBHOOK")
 
 def check_bandai_updates():
     # 1. 抓取網頁內容
@@ -25,7 +24,7 @@ def check_bandai_updates():
 
     soup = BeautifulSoup(response.text, 'html.parser')
     
-    # 2. 根據你提供的結構，找出所有商品節點
+    # 2. 根據網頁結構，找出所有商品節點
     product_items = soup.find_all("div", {"data-id": "search-product-item", "class": "p-col__item"})
     
     # 3. 提取當前的商品 ID 列表
@@ -49,20 +48,24 @@ def check_bandai_updates():
     # 5. 找出「今天有，但昨天沒有」的新商品 ID
     new_ids = [pid for pid in current_ids if pid not in old_ids]
     
-    # 6. 如果有新商品，發送通知
-    if new_ids and old_ids:  # 確保不是第一次執行
-        alert_message = f"🚨 【Premium Bandai 通知】發現新商品上架！\n新商品 ID: {', '.join(new_ids)}\n前往查看: {URL}"
-        print(alert_message)
-        
-        if NOTIFY_WEBHOOK_URL:
-            # 以 Discord Webhook 為例發送通知
-            requests.post(NOTIFY_WEBHOOK_URL, json={"content": alert_message})
+    # 6. 如果有新商品，產生 mail_alert.txt 讓 GitHub Actions 發送 Email
+    # (加上 old_ids 的判斷是為了確保第一次執行時不會誤報)
+    if new_ids and old_ids:
+        alert_message = (
+            f"您好，監控腳本偵測到 Premium Bandai 有新商品上架囉！\n\n"
+            f"新商品 ID 列表:\n" + "\n".join([f"- {pid}" for pid in new_ids]) + 
+            f"\n\n請點擊以下連結前往查看：\n{URL}"
+        )
+        print("偵測到新商品！正在產生 Email 通知內容...")
+        with open("mail_alert.txt", "w", encoding="utf-8") as f:
+            f.write(alert_message)
     else:
         print(f"檢查完畢：對比昨天，沒有發現新的商品 ID。目前上架商品數: {len(current_ids)}")
 
     # 7. 更新歷史紀錄，供明天比對
     with open(HISTORY_FILE, "w") as f:
         json.dump(current_ids, f)
+        print("歷史紀錄已更新。")
 
 if __name__ == "__main__":
     check_bandai_updates()

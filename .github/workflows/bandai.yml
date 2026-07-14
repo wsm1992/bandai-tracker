@@ -2,13 +2,11 @@ name: Premium Bandai Monitor
 
 on:
   schedule:
-    # ⚠️ 注意：GitHub Actions 的定時任務使用的是 UTC 時間。
-    # 澳門時間為 UTC+8。如果想要在每天傍晚 18:00 執行，減去 8 小時就是 10:00 UTC。
-    - cron: '0 10 * * *'
-  workflow_dispatch: # 允許你隨時手動點擊按鈕，直接觸發測試
+    - cron: '0 10 * * *' # 每天澳門時間 18:00 執行
+  workflow_dispatch:
 
 permissions:
-  contents: write # 關鍵！這行允許機器人有權限將更新後的 JSON 檔案 push 回你的倉庫
+  contents: write
 
 jobs:
   monitor_job:
@@ -29,17 +27,26 @@ jobs:
         pip install requests beautifulsoup4
 
     - name: 4. 執行萬代監控腳本
-      env:
-        # 將你在 GitHub 設定的隱密權杖 (Secret) 帶入環境變數中
-        NOTIFY_WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
-      run: python bandai_monitor.py
+      # 💡 這裡已經幫你修改為新的腳本檔名
+      run: python bandai_tracker.py 
 
-    - name: 5. 比對並自動推回 JSON 資料庫
+    - name: 5. 偵測並發送 Email 通知
+      if: hashFiles('mail_alert.txt') != ''
+      uses: dawidd6/action-send-mail@v4
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: 🚨 Premium Bandai 新商品上架通知！
+        to: ${{ secrets.MAIL_TO }}
+        from: GitHub Action Bot
+        body: file://mail_alert.txt
+
+    - name: 6. 比對並自動推回 JSON 資料庫
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action Bot"
-        
-        # 檢查 pb_product_history.json 是否有被修改過
         if [ -n "$(git status --porcelain pb_product_history.json)" ]; then
           echo "偵測到資料庫更新，正在儲存並推回 GitHub..."
           git add pb_product_history.json
