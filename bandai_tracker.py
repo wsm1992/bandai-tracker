@@ -32,17 +32,17 @@ def check_bandai_updates():
             print(f"🌐 正在前往網址: {URL}")
             page.goto(URL, wait_until="networkidle", timeout=60000)
             
-            # 💡 改進：不使用會崩潰的強制等待，改用溫和的定時緩衝 5 秒，給 JavaScript 渲染時間
-            print("⏳ 緩衝 5 秒等待網頁動態數據載入...")
-            page.wait_for_timeout(5000)
+            # 💡 已更新：聽從建議，延長緩衝時間至 15 秒 (15000ms)，確保動態數據完全載入
+            print("⏳ 緩衝 15 秒等待網頁動態數據載入...")
+            page.wait_for_timeout(15000)
             
             # 獲取當前網頁標題與內容
             page_title = page.title()
             html_content = page.content()
             
-            # 💡 診斷機制：檢查是否撞牆被防爬蟲阻擋
+            # 診斷機制：檢查是否撞牆被防爬蟲阻擋
             if "Access Denied" in page_title or "403" in page_title:
-                print(f"❌ 糟糕！偵測到網頁標題為 '{page_title}'，已被 US 萬代防爬蟲系統阻擋！")
+                print(f"❌ 糟糕！偵測到網頁標題為 '{page_title}'，已被防爬蟲系統阻擋！")
                 browser.close()
                 return
                 
@@ -59,10 +59,9 @@ def check_bandai_updates():
         finally:
             browser.close()
 
-    # 如果抓到 0 件商品，且前面沒被 403 阻擋，代表該分類在該網站目前真的空空如也
+    # 如果抓到 0 件商品
     if not current_ids:
         print(f"ℹ️ 檢查完畢：目前 [{REGION_NAME}] 該分類查無任何商品（當前商品數為 0）。")
-        # 為了保持系統正常運作，建立一個空的歷史紀錄檔，避免明天誤報
         if not os.path.exists(HISTORY_FILE):
             with open(HISTORY_FILE, "w") as f:
                 json.dump([], f)
