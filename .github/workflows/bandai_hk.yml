@@ -37,13 +37,7 @@ jobs:
         from: GitHub Action Bot
         body: file://mail_alert.txt
     - name: 自動推回 JSON 資料庫
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action Bot"
-        if [ -n "$(git status --porcelain pb_hk_history.json)" ]; then
-          git add pb_hk_history.json
-          git commit -m "🤖 自動更新：HK Premium Bandai 商品紀錄"
-          # 💡 關鍵：推檔前先拉取並基底重置，防止與你的手動提交衝突
-          git pull --rebase origin main
-          git push origin HEAD:main
-        fi
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "🤖 自動更新：HK Premium Bandai 商品紀錄"
+        file_pattern: 'pb_hk_history.json'
