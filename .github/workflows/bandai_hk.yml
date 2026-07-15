@@ -24,6 +24,13 @@ jobs:
         playwright install-deps chromium
     - name: 執行香港萬代監控
       run: python bandai_tracker.py hk # 💡 傳入參數 hk
+    - name: 📸 上傳除錯截圖 (僅在無商品時觸發)
+      uses: actions/upload-artifact@v4
+      with:
+        name: pb-hk-debug-screenshot
+        path: screenshot_hk.png
+        if-no-files-found: ignore  # 如果順利抓到商品、沒產生截圖，就自動跳過不報錯
+        retention-days: 7          # 檔案保留 7 天，過期自動刪除不佔空間
     - name: 偵測並發送 Email 通知
       if: hashFiles('mail_alert.txt') != ''
       uses: dawidd6/action-send-mail@v4
