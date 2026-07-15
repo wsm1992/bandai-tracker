@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import time
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 
@@ -29,40 +30,59 @@ def check_bandai_updates():
         page = context.new_page()
         
         try:
-            print(f"🌐 正在前往網址: {URL}")
-            page.goto(URL, wait_until="networkidle", timeout=60000)
+            # 💡 新增：針對 500 錯誤的抗阻擋重試機制（最多嘗試 3 次）
+            page_loaded_successfully = False
+            for retry in range(1, 4):
+                print(f"🌐 正在前往網址 (第 {retry}/3 次嘗試): {URL}")
+                page.goto(URL, wait_until="networkidle", timeout=60000)
+                page.wait_for_timeout(3000)  # 給網頁 3 秒鐘讓標題與內容穩定
+                
+                page_title = page.title()
+                html_content = page.content()
+                
+                # 檢查是否撞到 500 牆或 Access Denied
+                if "500" in page_title or "PAGE NOT AVAILABLE" in page_title or "無法顯示網頁" in html_content or "Access Denied" in page_title:
+                    print(f"⚠️ 警告：偵測到萬代返回錯誤頁面 (500/阻擋)！")
+                    if retry < 3:
+                        print("⏳ 伺服器可能正在忙碌或限流，等待 5 秒後自動重新整理...")
+                        page.wait_for_timeout(5000)
+                        continue
+                    else:
+                        print("❌ 已經連續重試 3 次依然返回 500 錯誤，判定本次任務被徹底阻擋。")
+                        page.screenshot(path=f"screenshot_{region}.png", full_page=True)
+                        browser.close()
+                        return
+                else:
+                    # 沒有發現 500 關鍵字，代表成功進到正常網頁，跳出重試迴圈
+                    page_loaded_successfully = True
+                    break
             
-            print("⏳ 開始動態輪詢檢測商品（每 5 秒檢查一次，最高限時 60 秒）...")
+            if not page_loaded_successfully:
+                browser.close()
+                return
+
+            # 進到正常網頁後，開始動態輪詢監測商品列表是否渲染出來
+            print("⏳ 網頁載入成功！開始動態輪詢檢測商品（每 5 秒檢查一次，最高限時 60 秒）...")
             product_items = []
             
             for attempt in range(1, 13):
-                page_title = page.title()
-                
-                if "Access Denied" in page_title or "403" in page_title:
-                    print(f"❌ 糟糕！偵測到網頁標題為 '{page_title}'，已被防爬蟲系統阻擋！")
-                    # 被阻擋時也立刻拍下一張照片留存
-                    page.screenshot(path=f"screenshot_{region}.png", full_page=True)
-                    browser.close()
-                    return
-                
                 html_content = page.content()
                 soup = BeautifulSoup(html_content, 'html.parser')
                 product_items = soup.find_all("div", {"data-id": "search-product-item", "class": "p-col__item"})
                 
+                # 只要抓到商品，立刻破關往下走
                 if len(product_items) > 0:
                     print(f"✨ 第 {attempt} 次檢查成功！已成功偵測到商品載入（約耗時 {attempt * 5} 秒）。")
                     break
                 
                 if attempt < 12:
-                    print(f"⏱️ 第 {attempt} 次檢查：網頁尚未長出商品，等待 5 秒後重新檢測...")
+                    print(f"⏱️ 第 {attempt} 次檢查：商品尚未渲染完成，等待 5 秒...")
                     page.wait_for_timeout(5000)
                 else:
-                    print("🚨 已達到 60 秒最大等待極限，判定目前網頁上確實沒有商品。")
-                    # 💡 聽從建議：滿一分鐘仍為 0 時，強制拍下整頁長截圖
-                    screenshot_path = f"screenshot_{region}.png"
-                    page.screenshot(path=screenshot_path, full_page=True)
-                    print(f"📸 已成功將當前網頁畫面截圖保存至: {screenshot_path}")
+                    print("🚨 已達到 60 秒最大等待極限，畫面上依然沒有商品。")
+                    page.screenshot(path=f"screenshot_{region}.png", full_page=True)
             
+            # 提取商品 ID
             for item in product_items:
                 product_id = item.get("data-product-list-item")
                 if product_id:
@@ -70,7 +90,6 @@ def check_bandai_updates():
                     
         except Exception as e:
             print(f"❌ 瀏覽器自動化執行發生錯誤: {e}")
-            # 發生未預期崩潰時也順便截圖，方便定位錯誤
             try:
                 page.screenshot(path=f"screenshot_{region}.png", full_page=True)
             except:
@@ -78,6 +97,7 @@ def check_bandai_updates():
         finally:
             browser.close()
 
+    # 如果抓到 0 件商品
     if not current_ids:
         print(f"ℹ️ 檢查完畢：目前 [{REGION_NAME}] 該分類查無任何商品（當前商品數為 0）。")
         if not os.path.exists(HISTORY_FILE):
