@@ -39,7 +39,7 @@ def check_bandai_updates():
                 page_title = page.title()
                 html_content = page.content()
                 
-                # 檢查是否撞到 500 牆
+                # 檢查是否撞到 500 牆或 Access Denied
                 if "500" in page_title or "PAGE NOT AVAILABLE" in page_title or "無法顯示網頁" in html_content or "Access Denied" in page_title:
                     print(f"⚠️ 警告：偵測到萬代返回錯誤頁面 (500/阻擋)！")
                     if retry < 5:
@@ -49,6 +49,17 @@ def check_bandai_updates():
                     else:
                         print("❌ 已經連續重試 5 次依然返回 500 錯誤，判定本次任務被徹底阻擋。")
                         page.screenshot(path=f"screenshot_{region}.png", full_page=True)
+                        
+                        # 💡 情況 A：一直都是 500 錯誤時，強制發送 Email 警報
+                        alert_message = (
+                            f"❌【{REGION_NAME} 監控異常 - 連續 5 次 500 錯誤】\n\n"
+                            f"您好，監控腳本在嘗試連線 5 次（歷時 2 分多鐘）後，依然被萬代伺服器阻擋。\n"
+                            f"這通常代表該雲端 IP 被暫時限流，或是萬代伺服器正在進行維護。\n\n"
+                            f"請前往 GitHub Actions 下載 Artifacts 截圖確認畫面：\n{URL}"
+                        )
+                        with open("mail_alert.txt", "w", encoding="utf-8") as f:
+                            f.write(alert_message)
+                        
                         browser.close()
                         return
                 else:
@@ -93,19 +104,10 @@ def check_bandai_updates():
         finally:
             browser.close()
 
-    # 💡 測試修改 1：如果商品數量為 0（不論是沒商品還是撞牆阻擋），也強制發送 Email
+    # 如果抓到 0 件商品（正常網頁載入，但分類確實是空的）
     if not current_ids:
-        print(f"ℹ️ 檢查完畢：當前商品數為 0。強制產生 Email 通知以供測試...")
-        alert_message = (
-            f"⚠️【{REGION_NAME} 監控報告 - 商品數為 0】\n\n"
-            f"您好，腳本已成功執行完畢，但本次抓取到的商品數量為 0。\n"
-            f"這代表目前該分類可能真的沒有商品，或者依然被伺服器阻擋。\n\n"
-            f"請至 GitHub Actions 下載 Artifacts 截圖進行確認。\n"
-            f"前往確認網址：\n{URL}"
-        )
-        with open("mail_alert.txt", "w", encoding="utf-8") as f:
-            f.write(alert_message)
-            
+        print(f"ℹ️ 檢查完畢：目前 [{REGION_NAME}] 該分類查無任何商品（當前商品數為 0）。")
+        # 💡 商品無變化且為 0，不發送 Email (不寫入 mail_alert.txt)
         if not os.path.exists(HISTORY_FILE):
             with open(HISTORY_FILE, "w") as f:
                 json.dump([], f)
@@ -119,33 +121,24 @@ def check_bandai_updates():
     else:
         old_ids = []
 
+    # 計算是否有新上架的商品
     new_ids = [pid for pid in current_ids if pid not in old_ids]
     
-    # 💡 測試修改 2：不論是否有變更，都強制發送 Email
-    if new_ids and old_ids:
+    if new_ids:
+        # 💡 情況 B：發現有新商品（有變化），寫入 mail_alert.txt 觸發發信
         alert_message = (
             f"🚨【{REGION_NAME} 監控報告 - 偵測到新商品！】\n\n"
             f"新變動的商品 ID 列表:\n" + "\n".join([f"- {pid}" for pid in new_ids]) + 
             f"\n\n請點擊以下連結前往查看：\n{URL}"
         )
         print(f"🚨 偵測到新商品！已產生 Email 通知內容。")
+        with open("mail_alert.txt", "w", encoding="utf-8") as f:
+            f.write(alert_message)
     else:
-        # 當商品沒有變化時的測試報告內容
-        status_desc = "這是首次執行，已建立初始資料庫。" if not old_ids else "商品列表與上一次相比沒有變化。"
-        alert_message = (
-            f"📧【{REGION_NAME} 監控報告 - 定時無變更回報】\n\n"
-            f"您好！監控腳本正在雲端健康運行中。\n\n"
-            f"【本次檢查結果】\n"
-            f"● 變更狀態：{status_desc}\n"
-            f"● 當前商品總數：{len(current_ids)} 件\n\n"
-            f"請點擊以下連結前往查看：\n{URL}"
-        )
-        print(f"📧 [測試模式] 商品無變更，但依然產生 Email 通知以供測試...")
+        # 💡 情況 C：商品沒有變化，不寫入 mail_alert.txt (GitHub Actions 會自動跳過發信步驟)
+        print(f"▶ 比對完畢：對比上一次，[{REGION_NAME}] 沒有發現新的商品 ID。商品無變化，不發送 Email。")
 
-    # 寫入 mail_alert.txt，強制觸發 GitHub Actions 的寄信步驟
-    with open("mail_alert.txt", "w", encoding="utf-8") as f:
-        f.write(alert_message)
-
+    # 更新歷史紀錄
     with open(HISTORY_FILE, "w") as f:
         json.dump(current_ids, f)
         print(f"💾 [{REGION_NAME}] 歷史紀錄資料庫已更新。")
