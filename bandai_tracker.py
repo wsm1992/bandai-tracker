@@ -32,23 +32,37 @@ def check_bandai_updates():
             print(f"🌐 正在前往網址: {URL}")
             page.goto(URL, wait_until="networkidle", timeout=60000)
             
-            # 💡 已更新：聽從建議，延長緩衝時間至 15 秒 (15000ms)，確保動態數據完全載入
-            print("⏳ 緩衝 15 秒等待網頁動態數據載入...")
-            page.wait_for_timeout(15000)
+            # 💡 改良：動態輪詢機制，每 5 秒檢查一次，最多 60 秒 (共 12 次)
+            print("⏳ 開始動態輪詢檢測商品（每 5 秒檢查一次，最高限時 60 秒）...")
+            product_items = []
             
-            # 獲取當前網頁標題與內容
-            page_title = page.title()
-            html_content = page.content()
-            
-            # 診斷機制：檢查是否撞牆被防爬蟲阻擋
-            if "Access Denied" in page_title or "403" in page_title:
-                print(f"❌ 糟糕！偵測到網頁標題為 '{page_title}'，已被防爬蟲系統阻擋！")
-                browser.close()
-                return
+            for attempt in range(1, 13):
+                page_title = page.title()
                 
-            soup = BeautifulSoup(html_content, 'html.parser')
-            product_items = soup.find_all("div", {"data-id": "search-product-item", "class": "p-col__item"})
+                # 優先診斷：如果撞牆被防爬蟲阻擋，立刻停損退出
+                if "Access Denied" in page_title or "403" in page_title:
+                    print(f"❌ 糟糕！偵測到網頁標題為 '{page_title}'，已被防爬蟲系統阻擋！")
+                    browser.close()
+                    return
+                
+                # 抓取當前渲染的 HTML 並用 BeautifulSoup 分析
+                html_content = page.content()
+                soup = BeautifulSoup(html_content, 'html.parser')
+                product_items = soup.find_all("div", {"data-id": "search-product-item", "class": "p-col__item"})
+                
+                # 關鍵邏輯：只要抓到至少一個商品，立刻打碎倒數迴圈，直接往下存檔！
+                if len(product_items) > 0:
+                    print(f"✨ 第 {attempt} 次檢查成功！已成功偵測到商品載入（約耗時 {attempt * 5} 秒）。")
+                    break
+                
+                # 如果還沒到第 12 次（60秒），就繼續等待
+                if attempt < 12:
+                    print(f"⏱️ 第 {attempt} 次檢查：網頁尚未長出商品，等待 5 秒後重新檢測...")
+                    page.wait_for_timeout(5000)
+                else:
+                    print("🚨 已達到 60 秒最大等待極限，判定目前網頁上確實沒有商品。")
             
+            # 提取商品 ID
             for item in product_items:
                 product_id = item.get("data-product-list-item")
                 if product_id:
