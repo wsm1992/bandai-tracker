@@ -2,7 +2,7 @@ name: US Premium Bandai Monitor
 
 on:
   schedule:
-    - cron: '30 0 * * *' # 每天當地時間早上 08:30 自動執行
+    - cron: '22 22 * * *' # 美東時間 6:22 PM / 澳門時間早上 06:22 (UTC 22:22) 自動執行
   workflow_dispatch:
 
 permissions:

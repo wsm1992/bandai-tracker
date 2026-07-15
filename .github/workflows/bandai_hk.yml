@@ -2,7 +2,7 @@ name: HK Premium Bandai Monitor
 
 on:
   schedule:
-    - cron: '0 4 * * *' # 每天當地時間中午 12:00 自動執行
+    - cron: '13 4 * * *' # 每天當地時間中午 12:13 自動執行
   workflow_dispatch:
 
 permissions:
