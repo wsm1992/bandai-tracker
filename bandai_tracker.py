@@ -84,7 +84,6 @@ def check_bandai_updates():
         os.remove("mail_alert.txt")
 
     history = load_history()
-    current_ids = []
     now_utc = datetime.now(timezone.utc)
     now_local = datetime.now(TZ_LOCAL)
     now_display = now_local.strftime('%Y-%m-%d %H:%M:%S (UTC+8)')
@@ -94,6 +93,7 @@ def check_bandai_updates():
 
     MAX_RETRIES = 3  # 最多重試 3 次
     last_error_reason = ""
+    current_ids = []
 
     with sync_playwright() as p:
         print(f"🚀 啟動擬真雲端瀏覽器 [{REGION_NAME}]...")
@@ -119,7 +119,7 @@ def check_bandai_updates():
             }
         )
 
-        # 💡 隱藏 navigator.webdriver 標記
+        # 隱藏 navigator.webdriver 標記
         context.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
         """)
@@ -127,27 +127,30 @@ def check_bandai_updates():
         page = context.new_page()
 
         for attempt in range(1, MAX_RETRIES + 1):
+            current_ids = []
             print(f"🌐 嘗試連線目標網址 (第 {attempt}/{MAX_RETRIES} 次): {URL}")
             try:
                 response = page.goto(URL, wait_until="domcontentloaded", timeout=45000)
                 
-                # 檢查 HTTP 狀態碼
+                # 1. 檢查 HTTP 狀態碼
                 if response and response.status >= 500:
                     last_error_reason = f"HTTP Status {response.status}"
                     print(f"⚠️ 伺服器回覆 {last_error_reason}，等待 15 秒後重試...")
-                    time.sleep(15)
+                    if attempt < MAX_RETRIES:
+                        time.sleep(15)
                     continue
 
-                # 檢查內容是否被反爬阻擋
+                # 2. 檢查內容是否被反爬阻擋
                 page_title = page.title()
                 page_content = page.content()
                 if "Access Denied" in page_title or "403" in page_title or "PAGE NOT AVAILABLE" in page_content:
                     last_error_reason = f"網頁顯示 Access Denied/403/崩潰 ('{page_title}')"
                     print(f"⚠️ 偵測到阻擋特徵: {last_error_reason}，等待 20 秒後重試...")
-                    time.sleep(20)
+                    if attempt < MAX_RETRIES:
+                        time.sleep(20)
                     continue
 
-                # 輪詢檢測商品 (最長等 30 秒)
+                # 3. 輪詢檢測商品 (最長等 30 秒)
                 product_items = []
                 for poll in range(1, 7):
                     soup = BeautifulSoup(page.content(), 'html.parser')
@@ -161,7 +164,15 @@ def check_bandai_updates():
                     if product_id:
                         current_ids.append(product_id)
 
-                # 順利完成爬取（無論是否有商品都代表連線成功）
+                # 4. 💡 判斷商品數是否為 0（拉長等待時間至 60 秒）
+                if len(current_ids) == 0:
+                    last_error_reason = "網頁載入成功但未抓取到任何商品 (0 件)"
+                    if attempt < MAX_RETRIES:
+                        print(f"⚠️ 第 {attempt} 次未抓到商品，將等待 60 秒後進行第 {attempt + 1} 次重試...")
+                        time.sleep(60)
+                        continue
+
+                # 若成功抓取到商品 (len > 0)，清除錯誤理由並跳出迴圈
                 last_error_reason = ""
                 break
 
@@ -172,7 +183,7 @@ def check_bandai_updates():
                     time.sleep(15)
 
         if last_error_reason:
-            print(f"❌ 已耗盡 {MAX_RETRIES} 次重試機會，確定遭遇異常。")
+            print(f"❌ 已耗盡 {MAX_RETRIES} 次重試機會，確定遭遇異常: {last_error_reason}")
             try:
                 page.screenshot(path=f"screenshot_{region}.png", full_page=True)
             except Exception:
