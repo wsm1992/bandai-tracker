@@ -1,9 +1,12 @@
 import sys
 import os
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
+
+# 設定澳門/香港時區 (UTC+8) 方便精確判斷當地時間
+TZ_LOCAL = timezone(timedelta(hours=8))
 
 # 從命令列參數獲取區域（hk 或 us），預設為 hk
 region = sys.argv[1].lower() if len(sys.argv) > 1 else "hk"
@@ -27,15 +30,17 @@ def load_history():
                 # 舊格式相容（若原本純粹是 ID List）
                 if isinstance(data, list):
                     items_dict = {pid: {"first_seen": "Legacy"} for pid in data}
-                    return {"last_500_email_time": None, "items": items_dict}
+                    return {"last_500_email_time": None, "last_success_time": None, "items": items_dict}
                 elif isinstance(data, dict):
                     if "items" not in data:
                         data["items"] = {}
+                    if "last_success_time" not in data:
+                        data["last_success_time"] = None
                     return data
         except Exception as e:
             print(f"⚠️ 讀取歷史紀錄失敗，將重新初始化資料庫: {e}")
     
-    return {"last_500_email_time": None, "items": {}}
+    return {"last_500_email_time": None, "last_success_time": None, "items": {}}
 
 
 def save_history(history):
@@ -48,7 +53,7 @@ def handle_error_alert(history, error_msg):
     """處理 500 / 阻擋 / 異常與 12 小時電郵冷卻機制"""
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
-    now_display = now.strftime('%Y-%m-%d %H:%M:%S UTC')
+    now_display = datetime.now(TZ_LOCAL).strftime('%Y-%m-%d %H:%M:%S (UTC+8)')
 
     last_email_str = history.get("last_500_email_time")
     should_send_email = True
@@ -87,7 +92,9 @@ def check_bandai_updates():
 
     history = load_history()
     current_ids = []
-    now_display = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    now_utc = datetime.now(timezone.utc)
+    now_local = datetime.now(TZ_LOCAL)
+    now_display = now_local.strftime('%Y-%m-%d %H:%M:%S (UTC+8)')
 
     with sync_playwright() as p:
         print(f"🚀 正在啟動雲端瀏覽器，準備檢查 [{REGION_NAME}]...")
@@ -161,12 +168,52 @@ def check_bandai_updates():
         finally:
             browser.close()
 
+    # ==========================================
+    # 邏輯判斷：無商品時的定時健康檢查 (保底機制)
+    # ==========================================
     if not current_ids:
         print(f"ℹ️ 檢查完畢：目前 [{REGION_NAME}] 該分類查無任何商品（當前商品數為 0）。")
-        save_history(history)
+        
+        current_hour = now_local.hour # 0-23
+        
+        # 觸發檢查的時間點：HK 為 14:00~15:00 (14:13)；US 為 06:00~07:00 (06:22)
+        is_hk_check_window = (region == "hk" and current_hour == 14)
+        is_us_check_window = (region == "us" and current_hour == 6)
+
+        if is_hk_check_window or is_us_check_window:
+            had_recent_success = False
+            last_success_str = history.get("last_success_time")
+
+            if last_success_str:
+                try:
+                    last_success_dt = datetime.fromisoformat(last_success_str)
+                    hours_diff = (now_utc - last_success_dt).total_seconds() / 3600
+                    
+                    # HK 檢查 12:00~15:00 (過去 3.5 小時內)；US 檢查 03:00~07:00 (過去 4.5 小時內)
+                    max_allowed_hours = 3.5 if region == "hk" else 4.5
+                    if hours_diff <= max_allowed_hours:
+                        had_recent_success = True
+                except Exception as e:
+                    print(f"⚠️ 解析最後成功抓取時間失敗: {e}")
+
+            if not had_recent_success:
+                window_desc = "12:00~15:00" if region == "hk" else "03:00~07:00"
+                err_msg = f"【定時健康檢查失敗】在 {window_desc} 時段內均未能成功抓取到任何商品，疑網頁結構變更或遭持續阻擋！"
+                print(f"❌ {err_msg}")
+                handle_error_alert(history, err_msg)
+            else:
+                print(f"ℹ️ 本次抓取數為 0，但近期指定時段內曾有成功抓取紀錄，視為正常，不發送電郵。")
+                save_history(history)
+        else:
+            save_history(history)
+
         return
 
+    # ==========================================
+    # 成功抓取商品：更新 last_success_time 與商品庫
+    # ==========================================
     print(f"✅ 成功抓取商品！當前商品總數: {len(current_ids)}")
+    history["last_success_time"] = now_utc.isoformat() # 💡 紀錄最新成功抓取的時間戳
 
     old_items_dict = history.get("items", {})
     new_ids = [pid for pid in current_ids if pid not in old_items_dict]
