@@ -67,9 +67,10 @@ def handle_error_alert(history, error_msg):
         print(f"🚨 觸發 500/異常通知電郵 (記錄時間: {now_display})")
         alert_text = (
             f"⚠️ 【{REGION_NAME} 伺服器異常/阻擋通知】\n\n"
-            f"發生時間: {now_display}\n"
+            f"檢查時間: {now_display}\n"
+            f"目標網址: {URL}\n"
             f"異常細節: {error_msg}\n\n"
-            f"請檢查目標網站狀況或爬蟲環境配置。"
+            f"請點擊上方網址檢查目標網站狀況或爬蟲環境配置。"
         )
         with open("mail_alert.txt", "w", encoding="utf-8") as f:
             f.write(alert_text)
@@ -162,7 +163,6 @@ def check_bandai_updates():
 
     if not current_ids:
         print(f"ℹ️ 檢查完畢：目前 [{REGION_NAME}] 該分類查無任何商品（當前商品數為 0）。")
-        # 即使商品為 0，也更新並保持 JSON 資料庫完整
         save_history(history)
         return
 
@@ -174,10 +174,11 @@ def check_bandai_updates():
     # 有新商品且並非第一次建檔時發送 Email 通知
     if new_ids and len(old_items_dict) > 0:
         alert_message = (
-            f"您好，監控腳本偵測到 【{REGION_NAME}】 有新商品上架或狀態更新囉！\n"
-            f"檢查時間: {now_display}\n\n"
+            f"您好，監控腳本偵測到 【{REGION_NAME}】 有新商品上架或狀態更新囉！\n\n"
+            f"檢查時間: {now_display}\n"
+            f"目標網址: {URL}\n\n"
             f"新變動的商品 ID 列表:\n" + "\n".join([f"- {pid}" for pid in new_ids]) +
-            f"\n\n請點擊以下連結前往查看：\n{URL}"
+            f"\n\n請點擊以上連結前往查看。"
         )
         print(f"🚨 偵測到新商品！正在產生 {REGION_NAME} 的 Email 通知內容...")
         with open("mail_alert.txt", "w", encoding="utf-8") as f:
