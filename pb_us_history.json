@@ -1,1 +1,65 @@
-["N2903432005", "N2881648002", "N2904549002", "N2884150001", "N2903432004", "N2890904001", "N2903432003", "N2903432001", "N2881152001", "N2863373001", "N2863372001", "N2856354006", "N9061360004", "N9061361004", "N2884128001", "N2835216004", "N9062600002", "N9062190003", "N2883032002", "N2863455002"]
+{
+  "last_500_email_time": "2026-08-10T04:34:50.556536+00:00",
+  "items": {
+    "N2903432005": {
+      "first_seen": "Legacy"
+    },
+    "N2881648002": {
+      "first_seen": "Legacy"
+    },
+    "N2904549002": {
+      "first_seen": "Legacy"
+    },
+    "N2884150001": {
+      "first_seen": "Legacy"
+    },
+    "N2903432004": {
+      "first_seen": "Legacy"
+    },
+    "N2890904001": {
+      "first_seen": "Legacy"
+    },
+    "N2903432003": {
+      "first_seen": "Legacy"
+    },
+    "N2903432001": {
+      "first_seen": "Legacy"
+    },
+    "N2881152001": {
+      "first_seen": "Legacy"
+    },
+    "N2863373001": {
+      "first_seen": "Legacy"
+    },
+    "N2863372001": {
+      "first_seen": "Legacy"
+    },
+    "N2856354006": {
+      "first_seen": "Legacy"
+    },
+    "N9061360004": {
+      "first_seen": "Legacy"
+    },
+    "N9061361004": {
+      "first_seen": "Legacy"
+    },
+    "N2884128001": {
+      "first_seen": "Legacy"
+    },
+    "N2835216004": {
+      "first_seen": "Legacy"
+    },
+    "N9062600002": {
+      "first_seen": "Legacy"
+    },
+    "N9062190003": {
+      "first_seen": "Legacy"
+    },
+    "N2883032002": {
+      "first_seen": "Legacy"
+    },
+    "N2863455002": {
+      "first_seen": "Legacy"
+    }
+  }
+}
