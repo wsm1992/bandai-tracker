@@ -1,0 +1,11 @@
+您好，監控腳本偵測到 【HK Premium Bandai】 有新商品上架或狀態更新囉！
+
+檢查時間: 2026-09-26 05:13:25 (UTC+8)
+目標網址: https://p-bandai.com/hk/search?_lc=zh-HK&offset=0&limit=20&sortType=Relevance&_f_productStatuses=Waiting,On,End&_f_categories=04-011
+
+新變動的商品 ID 列表:
+- A2873366001
+- A2812150001
+- A2873365001
+
+請點擊以上連結前往查看。
