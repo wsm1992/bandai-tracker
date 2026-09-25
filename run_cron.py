@@ -32,10 +32,10 @@ def check_and_track(region_name, region_arg):
     if region_arg in git_status or "history" in git_status or "json" in git_status:
         print(f"偵測到【{region_name}】數據有更新！發送通知並同步至 Git...")
         
-        # 發送 Bark 手機通知
+        # 💡 加上這一行，實際發送 Bark 手機通知
         send_bark("🚨 Bandai 庫存更新", f"【{region_name}】地區偵測到商品變動或新商品上架！")
         
-        # 3. 自動 Git 提交並推送到遠端 GitHub
+        # 自動 Git 提交並推送到遠端 GitHub
         subprocess.run(["git", "add", "."])
         subprocess.run(["git", "commit", "-m", f"🤖 本地自動更新：{region_name} 狀態變更"])
         
