@@ -1,11 +1,11 @@
 import subprocess
 import requests
 
-# 你的 Bark 專屬 Key
-BARK_KEY = "qNRxAfYURwGKqBbTjvdne"
+# 確保這裡的字串前後沒有任何多餘的空白或換行
+BARK_KEY = "qNRxAfYURwGKqBbTjvdnee"
 
 def send_bark(title, body):
-    """使用 Bark 官方的 JSON POST 方式發送推播"""
+    """使用與成功 curl 完全一致的 JSON 格式發送 Bark 推播"""
     try:
         url = "https://api.day.app/push"
         payload = {
@@ -15,15 +15,16 @@ def send_bark(title, body):
             "group": "BandaiMonitor",
             "ttl": 600
         }
-        # 使用 json=payload 會自動設定 Content-Type: application/json
+        
         response = requests.post(url, json=payload)
         
+        # 印出詳細回應方便除錯
         if response.status_code == 200:
             print("[通知] Bark 手機推播已成功發送！")
         else:
-            print(f"[通知警告] Bark 推播失敗，狀態碼：{response.status_code}, 回應：{response.text}")
+            print(f"[通知警告] 推播失敗，狀態碼：{response.status_code}, 回應：{response.text}")
     except Exception as e:
-        print(f"推播失敗: {e}")
+        print(f"推播失敗例外: {e}")
 
 def check_and_track(region_name, region_arg):
     print(f"執行【{region_name}】追蹤...")
