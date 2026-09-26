@@ -6,7 +6,7 @@ from email.mime.multipart import MIMEMultipart
 # ================= 郵件設定 =================
 EMAIL_CONFIG = {
     "smtp_server": "smtp.gmail.com",  # 如果用 Gmail 保持不變
-    "smtp_port": 587,                 # TLS 通訊埠
+    "smtp_port": 465,                 # TLS 通訊埠
     "sender_email": "wongsiuming1992@gmail.com", # 發信信箱
     "sender_password": "dmtfveeytymslars",    # 16位數應用程式密碼
     "receiver_email": "wsm1992@hotmail.com"  # 收信信箱（通常跟發信一樣）
