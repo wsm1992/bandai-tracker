@@ -5,17 +5,23 @@ import requests
 BARK_KEY = "qNRxAfYURwGKQbBTjvdnee"
 
 def send_bark(title, body):
-    """使用 POST 方式發送 Bark 推播"""
+    """使用 Bark 官方的 JSON POST 方式發送推播"""
     try:
-        url = f"https://api.day.app/{BARK_KEY}"
+        url = "https://api.day.app/push"
         payload = {
+            "device_key": BARK_KEY,
             "title": title,
             "body": body,
             "group": "BandaiMonitor",
             "ttl": 600
         }
-        requests.post(url, data=payload)
-        print("[通知] Bark 手機推播已成功發送！")
+        # 使用 json=payload 會自動設定 Content-Type: application/json
+        response = requests.post(url, json=payload)
+        
+        if response.status_code == 200:
+            print("[通知] Bark 手機推播已成功發送！")
+        else:
+            print(f"[通知警告] Bark 推播失敗，狀態碼：{response.status_code}, 回應：{response.text}")
     except Exception as e:
         print(f"推播失敗: {e}")
 
