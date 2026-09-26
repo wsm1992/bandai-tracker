@@ -2,7 +2,7 @@ import subprocess
 import requests
 
 # 你的 Bark 專屬 Key
-BARK_KEY = "36fd46bedb7cda0c06b1c9f7a5263c731e2cd1c0c4b19600ee928d27e2fbcfe6"
+BARK_KEY = "qNRxAfYURwGKqBbTjvdne"
 
 def send_bark(title, body):
     """使用 Bark 官方的 JSON POST 方式發送推播"""
