@@ -5,15 +5,15 @@ from email.mime.multipart import MIMEMultipart
 
 # ================= 郵件設定 =================
 EMAIL_CONFIG = {
-    "smtp_server": "smtp.gmail.com",  # 如果用 Gmail 保持不變
-    "smtp_port": 465,                 # TLS 通訊埠
-    "sender_email": "wongsiuming1992@gmail.com", # 發信信箱
-    "sender_password": "dmtfveeytymslars",    # 16位數應用程式密碼
-    "receiver_email": "wsm1992@hotmail.com"  # 收信信箱（通常跟發信一樣）
+    "smtp_server": "smtp.gmail.com",
+    "smtp_port": 465,                 # 使用 465 SSL 專用埠
+    "sender_email": "wongsiuming1992@gmail.com", 
+    "sender_password": "dmtfveeytymslars",    # 16 位數應用程式密碼
+    "receiver_email": "wsm1992@hotmail.com"
 }
 
 def send_email_alert(subject, content):
-    """使用 SMTP 發送 Email 通知"""
+    """使用 SMTP_SSL 發送 Email 通知，並主動打招呼避免連線中斷"""
     try:
         msg = MIMEMultipart()
         msg["From"] = EMAIL_CONFIG["sender_email"]
@@ -23,9 +23,9 @@ def send_email_alert(subject, content):
         # 加入郵件內文
         msg.attach(MIMEText(content, "plain", "utf-8"))
 
-        # 連線至 SMTP 伺服器並發送
-        with smtplib.SMTP(EMAIL_CONFIG["smtp_server"], EMAIL_CONFIG["smtp_port"]) as server:
-            server.starttls()  # 升級為加密連線
+        # 建立安全連線並發送
+        with smtplib.SMTP_SSL(EMAIL_CONFIG["smtp_server"], EMAIL_CONFIG["smtp_port"]) as server:
+            server.ehlo()  # 主動向伺服器建立穩定工作階段
             server.login(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_password"])
             server.sendmail(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["receiver_email"], msg.as_string())
             
@@ -63,13 +63,13 @@ def check_and_track(region_name, region_arg):
             
             # 組合信件內容，順便附上詳細的 git diff 異動清單
             subject = f"🚨 【Bandai 追蹤】{region_name} 地區商品有更新！"
-            body = f"偵測到 Bandai {region_name} 地區有新商品上架或狀態變更。\n\n詳細異動內容：\n{diff_content[:2000]}" # 限制字數避免過長
+            body = f"偵測到 Bandai {region_name} 地區有新商品上架或狀態變更。\n\n詳細異動內容：\n{diff_content[:2000]}"
             
             send_email_alert(subject, body)
         else:
             print(f"【{region_name}】僅有時間戳記 (last_success_time) 改變，商品內容無實質變動，不發送 Email。")
         
-        # 無論是否有新商品，只要歷史檔案更新了，就順便 commit 並 push 保持 Git 同步
+        # 自動 commit 並 push 保持 Git 同步
         subprocess.run(["git", "add", "."])
         subprocess.run(["git", "commit", "-m", f"🤖 本地自動更新：{region_name} 狀態變更"])
         
