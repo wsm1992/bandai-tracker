@@ -1,0 +1,66 @@
+# Python bytecode, compilation files and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+
+# IDEs (VSCode, PyCharm, etc.)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+.hgfs
+
+# Lock files
+*.lock
+requirements.lock
+Pipfile.lock
+package-lock.json
+
+# Logs
+logs/
+*.log
+
+# Temporary files and cache
+tmp/
+temp/
+*.tmp
+.cache/
+_cache/
+
+# Ollama downloads (optional, if you want to avoid tracking huge model weights)
+ollama-lib/models/
+.Ollama/
+
+# ComfyUI workspace (if applicable)
+comfyui_output/
+workspace/
+*~/.cache/
+
+# Bandai tracker specific (if needed)
+output/
+results/
+*.txt
+*benchmark*.txt
+*.html
+
+# Environment variables and config
+.env
+config.json
+secrets.json
+
+# Test files
+test_*_output.txt
+*_test_output.md
+
+# Virtual environment (optional, sometimes you want to track venv but not .hermes)
+venv/
+.venv/
+ENV/bin/
