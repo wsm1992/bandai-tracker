@@ -176,16 +176,20 @@ def process_region(region_arg, region_name):
                 title = item_data.get("title", "未命名商品")
                 changes.append(f"➕ 【新上架】 {title}\n    (ID: {prod_id})")
 
-    # 更新 SQLite 資料表（包含獨立寫入 product_name 欄位）
+    tz_utc8 = timezone(timedelta(hours=8))
+    now_utc8 = datetime.now(tz_utc8).strftime('%Y-%m-%d %H:%M:%S')
+
+    # 更新 SQLite 資料表（包含獨立寫入 product_name 欄位與 UTC+8 updated_at）
     for prod_id, new_item in crawled_dict.items():
         product_name = new_item.get("title", "未命名商品")
         cursor.execute(f"""
             INSERT INTO {table_name} (product_id, product_name, data_json, updated_at)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(product_id) DO UPDATE SET
                 product_name = excluded.product_name,
-                data_json = excluded.data_json
-        """, (prod_id, product_name, json.dumps(new_item, ensure_ascii=False)))
+                data_json = excluded.data_json,
+                updated_at = excluded.updated_at
+        """, (prod_id, product_name, json.dumps(new_item, ensure_ascii=False), now_utc8))
     
     conn.commit()
     conn.close()
